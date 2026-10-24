@@ -1,0 +1,57 @@
+name: jura-consulting
+services:
+  app:
+    build: .
+    image: jura-consulting:local
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      APP_URL: https://jura.consulting
+      DATA_DIR: /app/data
+    volumes:
+      - jura_data:/app/data
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /app/.next/cache:uid=1000,gid=1000
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    mem_limit: 1536m
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+  reminders:
+    image: jura-consulting:local
+    restart: unless-stopped
+    command: [node, scripts/maintenance.mjs]
+    env_file: .env
+    environment:
+      MAINTENANCE_URL: http://app:3000/api/maintenance
+    depends_on:
+      app:
+        condition: service_healthy
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+volumes:
+  jura_data:
+  caddy_data:
+  caddy_config:

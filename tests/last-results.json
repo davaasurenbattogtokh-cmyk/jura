@@ -1,0 +1,311 @@
+{
+  "date": "2026-10-24T05:13:54.658Z",
+  "checks": [
+    {
+      "name": "Protected API denies anonymous requests",
+      "passed": true
+    },
+    {
+      "name": "Public pages API is available",
+      "passed": true
+    },
+    {
+      "name": "Wrong admin password denied",
+      "passed": true
+    },
+    {
+      "name": "Initial admin authenticates",
+      "passed": true
+    },
+    {
+      "name": "Only one initial admin, no fixture users",
+      "passed": true
+    },
+    {
+      "name": "API does not expose password hashes",
+      "passed": true
+    },
+    {
+      "name": "Organization creation persists",
+      "passed": true
+    },
+    {
+      "name": "Create managerA",
+      "passed": true
+    },
+    {
+      "name": "Login managerA",
+      "passed": true
+    },
+    {
+      "name": "Create managerB",
+      "passed": true
+    },
+    {
+      "name": "Login managerB",
+      "passed": true
+    },
+    {
+      "name": "Create employeeA",
+      "passed": true
+    },
+    {
+      "name": "Login employeeA",
+      "passed": true
+    },
+    {
+      "name": "Create employeeB",
+      "passed": true
+    },
+    {
+      "name": "Login employeeB",
+      "passed": true
+    },
+    {
+      "name": "Create personal",
+      "passed": true
+    },
+    {
+      "name": "Login personal",
+      "passed": true
+    },
+    {
+      "name": "Create parentA",
+      "passed": true
+    },
+    {
+      "name": "Login parentA",
+      "passed": true
+    },
+    {
+      "name": "Create parentB",
+      "passed": true
+    },
+    {
+      "name": "Login parentB",
+      "passed": true
+    },
+    {
+      "name": "Child without parent consent denied",
+      "passed": true
+    },
+    {
+      "name": "Login child",
+      "passed": true
+    },
+    {
+      "name": "Manager A cannot see Org B members",
+      "passed": true
+    },
+    {
+      "name": "Parent A sees own child",
+      "passed": true
+    },
+    {
+      "name": "Parent B cannot see unrelated child",
+      "passed": true
+    },
+    {
+      "name": "Employee cannot create admin",
+      "passed": true
+    },
+    {
+      "name": "Task assigned persists",
+      "passed": true
+    },
+    {
+      "name": "Cross-tenant task assignment denied",
+      "passed": true
+    },
+    {
+      "name": "Other employee cannot complete task",
+      "passed": true
+    },
+    {
+      "name": "Assigned employee can complete",
+      "passed": true
+    },
+    {
+      "name": "Duplicate completion deduplicated",
+      "passed": true
+    },
+    {
+      "name": "Reassigning completed task is rejected",
+      "passed": true
+    },
+    {
+      "name": "Completion survives a new login",
+      "passed": true
+    },
+    {
+      "name": "Evidence-required task rejects missing photo",
+      "passed": true
+    },
+    {
+      "name": "Evidence upload to R2",
+      "passed": true
+    },
+    {
+      "name": "Evidence is private",
+      "passed": true
+    },
+    {
+      "name": "Evidence allowed for own manager",
+      "passed": true
+    },
+    {
+      "name": "Evidence denied for other tenant",
+      "passed": true
+    },
+    {
+      "name": "Evidence completion persists",
+      "passed": true
+    },
+    {
+      "name": "personal application stores record",
+      "passed": true
+    },
+    {
+      "name": "work application stores record",
+      "passed": true
+    },
+    {
+      "name": "kids application stores record",
+      "passed": true
+    },
+    {
+      "name": "Form validation rejects invalid request",
+      "passed": true
+    },
+    {
+      "name": "Admin inbox contains native submissions",
+      "passed": true
+    },
+    {
+      "name": "Kids PII is absent from email outbox",
+      "passed": true
+    },
+    {
+      "name": "Application status update",
+      "passed": true
+    },
+    {
+      "name": "Application note persists",
+      "passed": true
+    },
+    {
+      "name": "Exactly 5 questions enforced",
+      "passed": true
+    },
+    {
+      "name": "Incomplete lesson cannot publish",
+      "passed": true
+    },
+    {
+      "name": "Draft lesson persists",
+      "passed": true
+    },
+    {
+      "name": "Draft invisible to employee",
+      "passed": true
+    },
+    {
+      "name": "Complete video lesson can publish",
+      "passed": true
+    },
+    {
+      "name": "Answers not exposed before watch",
+      "passed": true
+    },
+    {
+      "name": "Quiz locked before viewing",
+      "passed": true
+    },
+    {
+      "name": "Watch duration verified by server",
+      "passed": true
+    },
+    {
+      "name": "5 quiz questions unlock without answer keys",
+      "passed": true
+    },
+    {
+      "name": "Quiz scored server-side and persists",
+      "passed": true
+    },
+    {
+      "name": "CMS draft saves",
+      "passed": true
+    },
+    {
+      "name": "CMS draft not public",
+      "passed": true
+    },
+    {
+      "name": "CMS publish visible",
+      "passed": true
+    },
+    {
+      "name": "CMS rollback restores previous version",
+      "passed": true
+    },
+    {
+      "name": "CSV source export protected",
+      "passed": true
+    },
+    {
+      "name": "Export omits credential material",
+      "passed": true
+    },
+    {
+      "name": "Cross-origin mutation denied",
+      "passed": true
+    },
+    {
+      "name": "Reminder queue can be generated",
+      "passed": true
+    },
+    {
+      "name": "Unconfigured email never reports sent",
+      "passed": true
+    },
+    {
+      "name": "Maintenance denies missing credential",
+      "passed": true
+    },
+    {
+      "name": "Maintenance denies invalid credential",
+      "passed": true
+    },
+    {
+      "name": "Maintenance accepts correct credential",
+      "passed": true
+    },
+    {
+      "name": "Maintenance exposes expected status fields",
+      "passed": true
+    },
+    {
+      "name": "Uploaded evidence supports byte ranges",
+      "passed": true
+    },
+    {
+      "name": "Excess byte range rejected",
+      "passed": true
+    },
+    {
+      "name": "SQLite users survive process connection restart",
+      "passed": true
+    },
+    {
+      "name": "Failed write batch rolls back atomically",
+      "passed": true
+    },
+    {
+      "name": "Logout invalidates session",
+      "passed": true
+    }
+  ],
+  "passed": 76,
+  "failed": 0
+}

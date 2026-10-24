@@ -1,0 +1,98 @@
+import {readFileSync,writeFileSync,readdirSync,rmSync,mkdirSync,mkdtempSync} from 'node:fs';
+import {resolve,relative,dirname,join} from 'node:path';
+import {pbkdf2Sync,randomBytes} from 'node:crypto';
+import {tmpdir} from 'node:os';
+import ts from 'typescript';
+const temp=mkdtempSync(join(tmpdir(),'jura-vps-qa-'));const compiled=join(temp,'compiled');
+for(const dir of ['app/api','lib'])for(const rel of readdirSync(dir,{recursive:true}).filter(x=>x.endsWith('.ts'))){
+ const file=join(dir,rel),target=join(compiled,file.replace(/\.ts$/,'.js'));mkdirSync(dirname(target),{recursive:true});
+ const output=ts.transpileModule(readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText.replace(/(from ['"])(\.[^'"]+)(['"])/g,(_,a,b,c)=>a+b+'.js'+c);
+ writeFileSync(target,output);
+}
+writeFileSync(join(compiled,'package.json'),JSON.stringify({type:'module'}));
+process.env.DATA_DIR=join(temp,'data');process.env.APP_URL='https://jura.test';delete process.env.RESEND_API_KEY;delete process.env.EMAIL_FROM;delete process.env.MAINTENANCE_TOKEN;
+const adminPassword=randomBytes(24).toString('hex'),salt=randomBytes(24).toString('hex');process.env.ADMIN_PASSWORD_HASH=pbkdf2Sync(adminPassword,salt,100000,32,'sha256').toString('hex');process.env.ADMIN_PASSWORD_SALT=salt;
+const {env,closeDatabase}=await import(join(compiled,'lib/env.js'));
+const api=await import(join(compiled,'app/api/jura/route.js'));
+const uploads=await import(join(compiled,'app/api/upload/route.js'));
+const files=await import(join(compiled,'app/api/files/[id]/route.js'));
+const maintenanceRoute=await import(join(compiled,'app/api/maintenance/route.js'));
+globalThis.fetch=async()=>{throw Error('Outbound fetch disabled for isolated QA');};
+const mf={getR2Bucket:async()=>env.BUCKET,dispose:async()=>{closeDatabase();rmSync(temp,{recursive:true,force:true});},dispatchFetch:async(url,init={})=>{
+ const req=new Request(url,init),path=new URL(url).pathname;
+ if(path==='/api/jura')return api[req.method](req);
+ if(path==='/api/upload')return uploads.POST(req);
+ if(path==='/api/maintenance')return maintenanceRoute.POST(req);
+ if(path.startsWith('/api/files/'))return files.GET(req,{params:Promise.resolve({id:path.split('/').at(-1)})});
+ return new Response('Not Found',{status:404});
+}};
+const checks=[];const check=(name,ok)=>{checks.push({name,passed:!!ok});if(!ok)throw new Error(name);console.log('PASS',name)};
+let seq=0;const uname=()=>`qa${Date.now()}${seq++}`;
+const cookies={};
+const call=async(action,b={},as='admin')=>{const r=await mf.dispatchFetch('https://jura.test/api/jura',{method:'POST',headers:{'Content-Type':'application/json',Origin:'https://jura.test',...(cookies[as]?{Cookie:cookies[as]}:{})},body:JSON.stringify({action,...b})});const d=await r.json();return {r,d}};
+const get=async(as='admin',query='view=app')=>{const r=await mf.dispatchFetch('https://jura.test/api/jura?'+query,{headers:cookies[as]?{Cookie:cookies[as]}:{}});return {r,d:await r.json()}};
+const login=async(username,password,as)=>{const {r,d}=await call('login',{username,password},'none');if(r.ok)cookies[as]=r.headers.get('set-cookie').split(';')[0];return {r,d}};
+try{
+const db=env.DB;
+check('Protected API denies anonymous requests',(await get('none')).r.status===401);
+check('Public pages API is available',(await get('none','view=public')).r.ok);
+check('Wrong admin password denied',(await login('Juradmin','incorrect-password','bad')).r.status===401);
+check('Initial admin authenticates',(await login('Juradmin',adminPassword,'admin')).r.ok);
+let state=(await get()).d;check('Only one initial admin, no fixture users',state.users.length===1&&state.users[0].username==='Juradmin');check('API does not expose password hashes',!JSON.stringify(state).includes('password_hash'));
+const org1=(await call('organization',{name:'QA Org A'})).d.id;const org2=(await call('organization',{name:'QA Org B'})).d.id;
+check('Organization creation persists',(await get()).d.organizations.length===2);
+const testPassword=randomBytes(18).toString('hex');
+const users={};
+for(const [key,role,org,parent] of [['managerA','manager',org1],['managerB','manager',org2],['employeeA','work',org1],['employeeB','work',org2],['personal','personal'],['parentA','parent'],['parentB','parent']]){const username=uname();const {r,d}=await call('saveUser',{username,name:'QA '+key,email:'qa@example.com',role,organization_id:org,password:testPassword,status:'active'});check('Create '+key,r.ok);users[key]={id:d.id,username};check('Login '+key,(await login(username,testPassword,key)).r.ok)}
+check('Child without parent consent denied',(await call('saveUser',{username:uname(),name:'QA Child',role:'kids',password:testPassword,status:'active'})).r.status===400);
+const childUsername=uname();const kid=(await call('saveUser',{username:childUsername,name:'QA Child',role:'kids',parent_id:users.parentA.id,consent:true,password:testPassword,status:'active'})).d.id;users.kid={id:kid};check('Login child',(await login(childUsername,testPassword,'kid')).r.ok);
+check('Manager A cannot see Org B members',!(await get('managerA')).d.users.some(x=>x.id===users.employeeB.id));check('Parent A sees own child',(await get('parentA')).d.users.some(x=>x.id===kid));check('Parent B cannot see unrelated child',!(await get('parentB')).d.users.some(x=>x.id===kid));
+check('Employee cannot create admin',(await call('saveUser',{role:'admin'},'employeeA')).r.status===403);
+state=(await get()).d;const date=state.date;
+const tb={title:'QA daily task',description:'Practice',date,time:'09:00',recurrence:'daily',user_id:users.employeeA.id,active:true};
+const task=(await call('task',tb)).d.id;check('Task assigned persists',(await get('employeeA')).d.tasks.some(x=>x.id===task));check('Cross-tenant task assignment denied',(await call('task',{...tb,user_id:users.employeeB.id},'managerA')).r.status===403);
+check('Other employee cannot complete task',(await call('complete',{id:task,done:true},'employeeB')).r.status===403);
+check('Assigned employee can complete',(await call('complete',{id:task,done:true},'employeeA')).r.ok);
+await call('complete',{id:task,done:true},'employeeA');check('Duplicate completion deduplicated',(await get('employeeA')).d.completions.filter(x=>x.task_id===task).length===1);
+check('Reassigning completed task is rejected',(await call('task',{...tb,id:task,user_id:users.employeeB.id})).r.status===400);
+check('Completion survives a new login',(await login(users.employeeA.username,testPassword,'employeeA')).r.ok&&(await get('employeeA')).d.completions.length===1);
+const photoTask=(await call('task',{...tb,title:'QA evidence task',evidence_required:true})).d.id;check('Evidence-required task rejects missing photo',(await call('complete',{id:photoTask,done:true},'employeeA')).r.status===400);
+const png=readFileSync('public/images/logo-dark.png');const form=new FormData();form.set('file',new File([png],'qa.png',{type:'image/png'}));const multipart=new Request('https://jura.test/api/upload?kind=evidence',{method:'POST',body:form});let ur=await mf.dispatchFetch(multipart.url,{method:'POST',headers:{'Content-Type':multipart.headers.get('content-type'),Cookie:cookies.employeeA,Origin:'https://jura.test'},body:new Uint8Array(await multipart.arrayBuffer())});const uploaded=await ur.json();if(!ur.ok)console.error('Upload diagnostic',ur.status,uploaded);check('Evidence upload to R2',ur.ok);
+check('Evidence is private',(await mf.dispatchFetch('https://jura.test'+uploaded.url)).status===403);
+check('Evidence allowed for own manager',(await mf.dispatchFetch('https://jura.test'+uploaded.url,{headers:{Cookie:cookies.managerA}})).ok);
+check('Evidence denied for other tenant',(await mf.dispatchFetch('https://jura.test'+uploaded.url,{headers:{Cookie:cookies.managerB}})).status===403);
+check('Evidence completion persists',(await call('complete',{id:photoTask,done:true,evidence:uploaded.url},'employeeA')).r.ok);
+for(const type of ['personal','work','kids']){const d={name:'QA Applicant',email:'qa@example.com',phone:'99999999',consent:true,goal:'Test',company:'QA Org',employees:2,childName:'QA Child',age:13,school:'QA School',grade:'7',relationship:'Ээж'};const {r}=await call('application',{type,data:d},'none');check(type+' application stores record',r.ok)}
+check('Form validation rejects invalid request',(await call('application',{type:'personal',data:{name:'x',email:'bad'}},'none')).r.status===400);
+state=(await get()).d;check('Admin inbox contains native submissions',state.applications.length===3);check('Kids PII is absent from email outbox',!state.outbox.some(x=>x.body.includes('QA Child')||x.body.includes('QA School')));
+const aid=state.applications[0].id;check('Application status update',(await call('applicationStatus',{id:aid,status:'Холбоо барьсан'})).r.ok);check('Application note persists',(await call('note',{id:aid,body:'QA note'})).r.ok&&(await get()).d.notes.length===1);
+const qs=Array.from({length:5},(_,i)=>({text:'Question '+i,options:['Correct','B','C','D'],correct:0}));const lb={title:'QA Lesson',description:'Test',category:'all',module:'QA',thumbnail:'/images/jura-academy-learner.webp',video:'',duration:0,questions:qs,status:'draft'};
+check('Exactly 5 questions enforced',(await call('lesson',{...lb,questions:qs.slice(0,4)})).r.status===400);check('Incomplete lesson cannot publish',(await call('lesson',{...lb,status:'published'})).r.status===400);
+const lesson=(await call('lesson',lb)).d.id;check('Draft lesson persists',(await get()).d.lessons.some(x=>x.id===lesson));check('Draft invisible to employee',!(await get('employeeA')).d.lessons.some(x=>x.id===lesson));
+const videoId=crypto.randomUUID();const bucket=await mf.getR2Bucket('BUCKET');await bucket.put(videoId,new Uint8Array(100),{httpMetadata:{contentType:'video/mp4'}});await db.prepare('INSERT INTO files VALUES(?,?,?,?,?,?,?)').bind(videoId,'initial-admin','qa.mp4','video/mp4','video',100,new Date().toISOString()).run();
+check('Complete video lesson can publish',(await call('lesson',{...lb,id:lesson,video:'/api/files/'+videoId,duration:1,status:'published'})).r.ok);
+let lv=(await get('employeeA','view=lesson&id='+lesson)).d;check('Answers not exposed before watch',lv.questions.length===0&&!JSON.stringify(lv).includes('correct'));
+check('Quiz locked before viewing',(await call('quiz',{id:lesson,answers:[0,0,0,0,0]},'employeeA')).r.status===403);
+await call('watch',{id:lesson,position:0},'employeeA');await db.prepare('UPDATE lesson_progress SET last_tick=last_tick-2000 WHERE user_id=? AND lesson_id=?').bind(users.employeeA.id,lesson).run();check('Watch duration verified by server',(await call('watch',{id:lesson,position:1},'employeeA')).d.watched===true);
+lv=(await get('employeeA','view=lesson&id='+lesson)).d;check('5 quiz questions unlock without answer keys',lv.questions.length===5&&!JSON.stringify(lv).includes('correct'));
+const qr=await call('quiz',{id:lesson,answers:[0,0,0,0,0]},'employeeA');check('Quiz scored server-side and persists',qr.d.score===5&&qr.d.passed&&(await get('employeeA')).d.attempts.length===1);
+const content={...(await get('none','view=public')).d.pages.home,title:'QA published title'};check('CMS draft saves',(await call('cms',{page:'home',content,publish:false})).r.ok);check('CMS draft not public',(await get('none','view=public')).d.pages.home.title!=='QA published title');await call('cms',{page:'home',content,publish:true});check('CMS publish visible',(await get('none','view=public')).d.pages.home.title==='QA published title');let versions=(await get()).d.versions;await call('rollback',{id:versions[0].id});check('CMS rollback restores previous version',(await get('none','view=public')).d.pages.home.title!=='QA published title');
+check('CSV source export protected',(await get('employeeA','view=export&table=users')).r.status===403);
+check('Export omits credential material',!JSON.stringify((await get('admin','view=export&table=users')).d).includes('password_hash'));
+check('Cross-origin mutation denied',(await mf.dispatchFetch('https://jura.test/api/jura',{method:'POST',headers:{'Content-Type':'application/json',Origin:'https://evil.test',Cookie:cookies.admin},body:JSON.stringify({action:'organization',name:'evil'})})).status===403);
+check('Reminder queue can be generated',(await call('reminders')).r.ok);check('Unconfigured email never reports sent',(await call('dispatch')).r.status===409);
+check('Maintenance denies missing credential',(await mf.dispatchFetch('https://jura.test/api/maintenance',{method:'POST'})).status===403);
+process.env.MAINTENANCE_TOKEN=randomBytes(32).toString('hex');
+check('Maintenance denies invalid credential',(await mf.dispatchFetch('https://jura.test/api/maintenance',{method:'POST',headers:{Authorization:'Bearer incorrect'}})).status===403);
+let maintenance=await mf.dispatchFetch('https://jura.test/api/maintenance',{method:'POST',headers:{Authorization:'Bearer '+process.env.MAINTENANCE_TOKEN}});
+check('Maintenance accepts correct credential',maintenance.ok);
+let digest=await maintenance.json();check('Maintenance exposes expected status fields',typeof digest.date==='string'&&Number.isInteger(digest.queued)&&Number.isInteger(digest.sent)&&digest.emailConfigured===false);
+let ranged=await mf.dispatchFetch('https://jura.test'+uploaded.url,{headers:{Cookie:cookies.employeeA,Range:'bytes=0-7'}});check('Uploaded evidence supports byte ranges',ranged.status===206&&(await ranged.arrayBuffer()).byteLength===8);
+check('Excess byte range rejected',(await mf.dispatchFetch('https://jura.test'+uploaded.url,{headers:{Cookie:cookies.employeeA,Range:'bytes=999999999-'}})).status===416);
+const beforeRestart=(await get()).d.users.length;closeDatabase();check('SQLite users survive process connection restart',(await get()).d.users.length===beforeRestart);
+const rowsBefore=await db.prepare('SELECT COUNT(*) AS n FROM organizations').first();try{await db.batch([db.prepare('INSERT INTO organizations(id,name,created_at) VALUES(?,?,?)').bind('rollback-test','Rollback',new Date().toISOString()),db.prepare('INSERT INTO no_such_table VALUES(1)')]);}catch{}
+const rowsAfter=await db.prepare('SELECT COUNT(*) AS n FROM organizations').first();check('Failed write batch rolls back atomically',rowsBefore.n===rowsAfter.n);
+
+await call('logout',{},'employeeA');check('Logout invalidates session',(await get('employeeA')).r.status===401);
+writeFileSync('tests/last-results.json',JSON.stringify({date:new Date().toISOString(),checks,passed:checks.length,failed:0},null,2));console.log('ALL CHECKS PASSED:',checks.length);
+}catch(e){writeFileSync('tests/last-results.json',JSON.stringify({date:new Date().toISOString(),checks,error:String(e)},null,2));console.error(e);process.exitCode=1}finally{await mf.dispose()}
