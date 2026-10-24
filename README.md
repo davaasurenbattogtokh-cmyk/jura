@@ -35,7 +35,7 @@ npm test
 npm run build
 ```
 
-VPS хувилбарын 80 интеграцийн шалгалт болон Next.js production build амжилттай. Тестүүд түр SQLite өгөгдлийн сан, санамсаргүй нууц үг ашиглаж, гадагш имэйл илгээхгүй.
+VPS хувилбарын 87 интеграцийн шалгалт болон Next.js production build амжилттай. Тестүүд түр SQLite өгөгдлийн сан, санамсаргүй нууц үг ашиглаж, гадагш имэйл илгээхгүй.
 
 Next.js / React / TypeScript · SQLite · локал хувийн файл хадгалалт · Docker Compose / Caddy · Resend (сонголтоор).
 

@@ -1,14 +1,14 @@
 import {env} from '../../../lib/env';
 import {all,one,run,db,uid,now,day,hash,equal,tokenHash,safeUser,bootstrap,auth,fail,requireRole,log,rate} from '../../../lib/auth';
 import {runDailyJobs} from '../../../lib/jobs';
-import {pages,defaultSettings} from '../../../lib/content';
+import {pages,resolveSettings} from '../../../lib/content';
 export const dynamic='force-dynamic';
 const clean=(v:any,max=1000)=>String(v??'').trim().slice(0,max);
 const mail=(v:string)=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 const roles=['admin','manager','work','personal','kids','parent'];
 const cookie=(t:string,req:Request,age=86400)=>`jura_session=${t}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${age}${env.APP_URL.startsWith('https:')?'; Secure':''}`;
 const json=(v:any,status=200,headers:any={})=>Response.json(v,{status,headers:{'Cache-Control':'no-store',...headers}});
-async function config(){const s=await one("SELECT value FROM settings WHERE id='general'");return {...defaultSettings,...s?JSON.parse(s.value):{}}}
+async function config(){const s=await one("SELECT value FROM settings WHERE id='general'");return resolveSettings(s?JSON.parse(s.value):{})}
 async function canUser(u:any,target:string){const t=await one('SELECT * FROM users WHERE id=?',target);if(!t)fail('Хэрэглэгч олдсонгүй.',404);if(u.role==='admin'||u.id===t.id||u.role==='manager'&&u.organization_id&&u.organization_id===t.organization_id||u.role==='parent'&&t.parent_id===u.id&&t.consent_at)return t;fail('Хандах эрхгүй.',403)}
 function available(l:any,u:any){return u.role==='admin'||l.status==='published'&&(l.category==='all'||l.category===u.role||u.role==='parent'||u.role==='manager'&&['work','personal','all'].includes(l.category))}
 function visibleLesson(l:any,u:any){return {...l,questions:u.role==='admin'?JSON.parse(l.questions):undefined}}

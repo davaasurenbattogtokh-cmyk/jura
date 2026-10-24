@@ -36,6 +36,14 @@ try{
 const db=env.DB;
 check('Protected API denies anonymous requests',(await get('none')).r.status===401);
 check('Public pages API is available',(await get('none','view=public')).r.ok);
+const {defaultSettings}=await import(join(compiled,'lib/content.js'));
+await db.prepare("INSERT INTO settings VALUES('general',?)").bind(JSON.stringify({contactPhone:'',contactEmail:' ',contactAddress:'',adminEmail:''})).run();
+let publicContact=(await get('none','view=public')).d.contact;
+check('Existing empty contact settings use the published business details',publicContact.phone===defaultSettings.contactPhone&&publicContact.email===defaultSettings.contactEmail&&publicContact.address===defaultSettings.contactAddress);
+await db.prepare("UPDATE settings SET value=? WHERE id='general'").bind(JSON.stringify({contactPhone:'+976 12345678',contactEmail:'edited@example.com',contactAddress:'Edited address',adminEmail:'qa@example.com'})).run();
+publicContact=(await get('none','view=public')).d.contact;
+check('Saved administrator contact edits remain authoritative',publicContact.phone==='+976 12345678'&&publicContact.email==='edited@example.com'&&publicContact.address==='Edited address');
+await db.prepare("DELETE FROM settings WHERE id='general'").run();
 check('Wrong admin password denied',(await login('Juradmin','incorrect-password','bad')).r.status===401);
 check('Initial admin authenticates',(await login('Juradmin',adminPassword,'admin')).r.ok);
 process.env.APP_URL='https://juras.consulting';
@@ -102,5 +110,32 @@ const rowsBefore=await db.prepare('SELECT COUNT(*) AS n FROM organizations').fir
 const rowsAfter=await db.prepare('SELECT COUNT(*) AS n FROM organizations').first();check('Failed write batch rolls back atomically',rowsBefore.n===rowsAfter.n);
 
 await call('logout',{},'employeeA');check('Logout invalidates session',(await get('employeeA')).r.status===401);
+// Stub the provider locally: these checks never send email or use real credentials.
+await db.prepare("UPDATE email_outbox SET attempts=5").run();
+process.env.RESEND_API_KEY='qa-'+randomBytes(24).toString('hex');process.env.EMAIL_FROM='JURA <notifications@example.com>';
+const {runDailyJobs}=await import(join(compiled,'lib/jobs.js'));
+const queueEmail=async(id)=>db.prepare("INSERT INTO email_outbox(id,recipient,subject,body,status,error,attempts,created_at) VALUES(?,?,'QA notification','Isolated email verification','queued','',0,?)").bind(id,'qa@example.com',new Date().toISOString()).run();
+const emailRequests=[];
+let providerStatus=200;
+globalThis.fetch=async(url,init)=>{
+ if(url!=='https://api.resend.com/emails')throw Error('Unexpected outbound request');
+ emailRequests.push({headers:init.headers,body:JSON.parse(init.body)});
+ return Response.json(providerStatus===200?{id:crypto.randomUUID()}:{message:'Mock provider rejection'},{status:providerStatus});
+};
+await queueEmail('qa-manual-email');
+const manualEmail=await call('dispatch');
+check('Administrator email dispatch submits a valid provider request',manualEmail.d.sent===1&&emailRequests[0].headers.Authorization==='Bearer '+process.env.RESEND_API_KEY&&emailRequests[0].headers['Idempotency-Key']==='qa-manual-email'&&emailRequests[0].body.from===process.env.EMAIL_FROM&&emailRequests[0].body.to[0]==='qa@example.com');
+check('Provider acceptance persists the sent state',(await db.prepare("SELECT status,sent_at FROM email_outbox WHERE id='qa-manual-email'").first()).status==='sent');
+await queueEmail('qa-scheduled-email');providerStatus=403;
+let emailJob=await runDailyJobs();
+let queuedEmail=await db.prepare("SELECT * FROM email_outbox WHERE id='qa-scheduled-email'").first();
+check('Provider rejection is recorded without claiming delivery',emailJob.sent===0&&queuedEmail.status==='failed'&&queuedEmail.attempts===1&&!queuedEmail.sent_at&&queuedEmail.error==='Provider 403');
+providerStatus=200;emailJob=await runDailyJobs();
+queuedEmail=await db.prepare("SELECT * FROM email_outbox WHERE id='qa-scheduled-email'").first();
+check('Scheduled job retries failed email and records acceptance',emailJob.sent===1&&queuedEmail.status==='sent'&&queuedEmail.attempts===2&&!!queuedEmail.sent_at);
+const emailCount=emailRequests.length;await runDailyJobs();
+check('Scheduled job does not resubmit accepted notifications',emailRequests.length===emailCount);
+delete process.env.RESEND_API_KEY;delete process.env.EMAIL_FROM;
+globalThis.fetch=async()=>{throw Error('Outbound fetch disabled for isolated QA');};
 writeFileSync('tests/last-results.json',JSON.stringify({date:new Date().toISOString(),checks,passed:checks.length,failed:0},null,2));console.log('ALL CHECKS PASSED:',checks.length);
 }catch(e){writeFileSync('tests/last-results.json',JSON.stringify({date:new Date().toISOString(),checks,error:String(e)},null,2));console.error(e);process.exitCode=1}finally{await mf.dispose()}

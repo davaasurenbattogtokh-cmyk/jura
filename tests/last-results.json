@@ -1,5 +1,5 @@
 {
-  "date": "2026-10-24T12:08:19.080Z",
+  "date": "2026-10-24T12:28:14.802Z",
   "checks": [
     {
       "name": "Protected API denies anonymous requests",
@@ -7,6 +7,14 @@
     },
     {
       "name": "Public pages API is available",
+      "passed": true
+    },
+    {
+      "name": "Existing empty contact settings use the published business details",
+      "passed": true
+    },
+    {
+      "name": "Saved administrator contact edits remain authoritative",
       "passed": true
     },
     {
@@ -320,8 +328,28 @@
     {
       "name": "Logout invalidates session",
       "passed": true
+    },
+    {
+      "name": "Administrator email dispatch submits a valid provider request",
+      "passed": true
+    },
+    {
+      "name": "Provider acceptance persists the sent state",
+      "passed": true
+    },
+    {
+      "name": "Provider rejection is recorded without claiming delivery",
+      "passed": true
+    },
+    {
+      "name": "Scheduled job retries failed email and records acceptance",
+      "passed": true
+    },
+    {
+      "name": "Scheduled job does not resubmit accepted notifications",
+      "passed": true
     }
   ],
-  "passed": 80,
+  "passed": 87,
   "failed": 0
 }

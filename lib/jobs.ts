@@ -1,8 +1,8 @@
 import {env} from './env';
 import {all,one,run,day,now} from './auth';
-import {defaultSettings} from './content';
+import {resolveSettings} from './content';
 export async function runDailyJobs(){
- const row=await one("SELECT value FROM settings WHERE id='general'");const settings={...defaultSettings,...row?JSON.parse(row.value):{}};
+ const row=await one("SELECT value FROM settings WHERE id='general'");const settings=resolveSettings(row?JSON.parse(row.value):{});
  const time=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Ulaanbaatar',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date());let queued=0,sent=0;
  if(time>=settings.reminderTime){
   const users=await all("SELECT * FROM users WHERE status='active'");for(const user of users){

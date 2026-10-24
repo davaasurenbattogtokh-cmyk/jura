@@ -5,7 +5,15 @@ export const pages:any={
  kids:{eyebrow:'JURA KIDS · 12–16 НАС',title:'Жижиг дадлууд.\nТом боломжийн суурь.',description:'Өөрийн орон зайдаа эзэн болж, суралцах орчноо удирдах, бие даасан дадал төлөвшүүлэх 3 хичээлтэй практик хөтөлбөр.',image:'/images/jura-kids-study.webp',cta:'Хөтөлбөрт бүртгүүлэх'}
 };
 export const roleNames:any={admin:'Супер админ',manager:'Байгууллагын удирдлага',work:'WORK ажилтан',personal:'PERSONAL хэрэглэгч',kids:'KIDS суралцагч',parent:'Эцэг эх'};
-export const defaultSettings={passMark:4,retryLimit:0,adminEmail:'',reminderTime:'09:00',contactPhone:'',contactEmail:'',contactAddress:''};
+export const defaultSettings={passMark:4,retryLimit:0,adminEmail:'organizerjura@gmail.com',reminderTime:'09:00',contactPhone:'+976 99927035',contactEmail:'organizerjura@gmail.com',contactAddress:'Дархан-Уул аймаг, Эмэгтэйчүүдийн ордон, 103 тоот'};
+export function resolveSettings(saved:Partial<typeof defaultSettings>={}){
+ const settings={...defaultSettings,...saved};
+ // Existing installations may already have saved empty contact fields.
+ for(const key of ['adminEmail','contactPhone','contactEmail','contactAddress'] as const){
+  if(typeof settings[key]!=='string'||!settings[key].trim())settings[key]=defaultSettings[key];
+ }
+ return settings;
+}
 const commonSteps=[['Үнэлгээ ба төлөвлөгөө','Одоогийн орчин, хэрэгцээ, зорилгыг хамт тодорхойлно.'],['Ангилалт ба зохион байгуулалт','Зүйл бүрд тохирох байрлал, ойлгомжтой систем бүтээнэ.'],['Дадал ба тогтвортой дэмжлэг','Өдөр тутмын жижиг алхмаар үр дүнгээ хадгална.']];
 for(const key of Object.keys(pages)){pages[key].sections={methodTitle:'Энгийн алхам. Тогтвортой өөрчлөлт.',steps:commonSteps,benefits:[]};}
 pages.home.sections.benefits=[['Хувийн нууц, хүндлэл','Таны орон зай, шийдвэрийг хүндэтгэнэ.'],['Танд тохирсон шийдэл','Амьдралын бодит хэмнэлд нийцүүлнэ.'],['Системтэй аргачлал','Үнэлгээ, зохион байгуулалт, дадал.'],['Хүн төвтэй хандлага','Тав тух, ойлгомжтой байдлыг эрхэмлэнэ.']];
