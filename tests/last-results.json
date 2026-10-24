@@ -1,5 +1,5 @@
 {
-  "date": "2026-10-24T05:13:54.658Z",
+  "date": "2026-10-24T12:08:19.080Z",
   "checks": [
     {
       "name": "Protected API denies anonymous requests",
@@ -15,6 +15,22 @@
     },
     {
       "name": "Initial admin authenticates",
+      "passed": true
+    },
+    {
+      "name": "Correct production domain accepts administrator login",
+      "passed": true
+    },
+    {
+      "name": "Production login issues a secure host-only session",
+      "passed": true
+    },
+    {
+      "name": "Production session opens administrator data",
+      "passed": true
+    },
+    {
+      "name": "Previous incorrect domain is rejected",
       "passed": true
     },
     {
@@ -306,6 +322,6 @@
       "passed": true
     }
   ],
-  "passed": 76,
+  "passed": 80,
   "failed": 0
 }

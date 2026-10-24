@@ -7,3 +7,5 @@ git pull --ff-only
 bash scripts/backup.sh
 docker compose build app
 docker compose up -d --wait --wait-timeout 180
+# Recreate the proxy to remount Caddyfile after Git replaces the file inode.
+docker compose up -d --no-deps --force-recreate proxy

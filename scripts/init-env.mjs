@@ -13,7 +13,7 @@ process.stdin.on('keypress',(s,key)=>{
   process.stdin.setRawMode(false);process.stdin.pause();process.stdout.write('\n');
   if(value.length<8){console.error('Use at least 8 characters.');process.exit(1);}
   const salt=randomBytes(24).toString('hex'),hash=pbkdf2Sync(value,salt,100000,32,'sha256').toString('hex');
-  writeFileSync('.env',`APP_URL=https://jura.consulting\nADMIN_PASSWORD_HASH=${hash}\nADMIN_PASSWORD_SALT=${salt}\nMAINTENANCE_TOKEN=${randomBytes(32).toString('hex')}\nRESEND_API_KEY=\nEMAIL_FROM=\n`,{mode:0o600,flag:'wx'});
+  writeFileSync('.env',`APP_URL=https://juras.consulting\nADMIN_PASSWORD_HASH=${hash}\nADMIN_PASSWORD_SALT=${salt}\nMAINTENANCE_TOKEN=${randomBytes(32).toString('hex')}\nRESEND_API_KEY=\nEMAIL_FROM=\n`,{mode:0o600,flag:'wx'});
   value='';console.log('Created .env with a password hash and generated maintenance credential.');process.exit(0);
  }
  if(s&&!key?.ctrl&&!key?.meta)value+=s;

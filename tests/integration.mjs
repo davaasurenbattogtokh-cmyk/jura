@@ -38,6 +38,14 @@ check('Protected API denies anonymous requests',(await get('none')).r.status===4
 check('Public pages API is available',(await get('none','view=public')).r.ok);
 check('Wrong admin password denied',(await login('Juradmin','incorrect-password','bad')).r.status===401);
 check('Initial admin authenticates',(await login('Juradmin',adminPassword,'admin')).r.ok);
+process.env.APP_URL='https://juras.consulting';
+let domainLogin=await mf.dispatchFetch('https://juras.consulting/api/jura',{method:'POST',headers:{'Content-Type':'application/json',Origin:'https://juras.consulting'},body:JSON.stringify({action:'login',username:'Juradmin',password:adminPassword})});
+check('Correct production domain accepts administrator login',domainLogin.ok);
+const domainCookie=domainLogin.headers.get('set-cookie')||'';
+check('Production login issues a secure host-only session',domainCookie.includes('HttpOnly')&&domainCookie.includes('Secure')&&domainCookie.includes('SameSite=Lax')&&!/Domain=/i.test(domainCookie));
+check('Production session opens administrator data',(await mf.dispatchFetch('https://juras.consulting/api/jura?view=app',{headers:{Cookie:domainCookie.split(';')[0]}})).ok);
+check('Previous incorrect domain is rejected',(await mf.dispatchFetch('https://juras.consulting/api/jura',{method:'POST',headers:{'Content-Type':'application/json',Origin:'https://jura.consulting'},body:JSON.stringify({action:'login',username:'Juradmin',password:adminPassword})})).status===403);
+process.env.APP_URL='https://jura.test';
 let state=(await get()).d;check('Only one initial admin, no fixture users',state.users.length===1&&state.users[0].username==='Juradmin');check('API does not expose password hashes',!JSON.stringify(state).includes('password_hash'));
 const org1=(await call('organization',{name:'QA Org A'})).d.id;const org2=(await call('organization',{name:'QA Org B'})).d.id;
 check('Organization creation persists',(await get()).d.organizations.length===2);

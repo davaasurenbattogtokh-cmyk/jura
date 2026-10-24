@@ -47,7 +47,7 @@ const BUCKET={
 };
 export const env={
  DB,BUCKET,
- get APP_URL(){return (process.env.APP_URL||'https://jura.consulting').replace(/\/$/,'');},
+ get APP_URL(){return (process.env.APP_URL||'https://juras.consulting').replace(/\/$/,'');},
  get ADMIN_PASSWORD_HASH(){return process.env.ADMIN_PASSWORD_HASH;},
  get ADMIN_PASSWORD_SALT(){return process.env.ADMIN_PASSWORD_SALT;},
  get RESEND_API_KEY(){return process.env.RESEND_API_KEY;},

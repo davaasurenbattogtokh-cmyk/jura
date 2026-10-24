@@ -6,7 +6,7 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      APP_URL: https://jura.consulting
+      APP_URL: https://juras.consulting
       DATA_DIR: /app/data
     volumes:
       - jura_data:/app/data

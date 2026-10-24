@@ -10,7 +10,7 @@
     "build": "next build --webpack",
     "start": "next start -H 127.0.0.1 -p 3000",
     "typecheck": "tsc --noEmit",
-    "test": "node tests/integration.mjs"
+    "test": "node tests/integration.mjs && node tests/admin-recovery.mjs"
   },
   "dependencies": {
     "lucide-react": "1.31.0",

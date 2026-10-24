@@ -2,7 +2,7 @@
 
 Монгол интерфейстэй үйлчилгээ, өдөр тутмын дадал, Academy болон админ систем.
 
-Hostinger VPS хувилбар · үндсэн домэйн **https://jura.consulting**.
+Hostinger VPS хувилбар · үндсэн домэйн **https://juras.consulting**.
 
 ## Шинэ VPS дээр суулгах
 
@@ -19,7 +19,7 @@ bash scripts/install.sh
 | DNS төрөл | Нэр | Зорилтот утга |
 | --- | --- | --- |
 | A | @ | VPS_IP_ADDRESS |
-| CNAME | www | jura.consulting |
+| CNAME | www | juras.consulting |
 
 Бодит VPS суулгалт болон DNS/HTTPS баталгаажуулалт хийгдээгүй. Docker бүтцийн болон shell синтаксын шалгалт хийсэн; контейнерүүдийг бодит Docker орчинд ажиллуулж шалгаагүй. Одоогийн Cloudflare D1/R2 өгөгдөл автоматаар шилжихгүй.
 
@@ -35,7 +35,7 @@ npm test
 npm run build
 ```
 
-VPS хувилбарын 76 интеграцийн шалгалт болон Next.js production build амжилттай. Тестүүд түр SQLite өгөгдлийн сан, санамсаргүй нууц үг ашиглаж, гадагш имэйл илгээхгүй.
+VPS хувилбарын 80 интеграцийн шалгалт болон Next.js production build амжилттай. Тестүүд түр SQLite өгөгдлийн сан, санамсаргүй нууц үг ашиглаж, гадагш имэйл илгээхгүй.
 
 Next.js / React / TypeScript · SQLite · локал хувийн файл хадгалалт · Docker Compose / Caddy · Resend (сонголтоор).
 

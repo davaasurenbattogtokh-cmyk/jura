@@ -46,4 +46,4 @@ if ! docker compose exec -T app node -e "fetch('http://127.0.0.1:3000/api/health
   echo 'Application health check failed. Check: docker compose logs --tail=100 app';exit 1
 fi
 echo 'Application started. HTTPS becomes available after DNS and ports 80/443 are reachable.'
-echo 'Open https://jura.consulting/login and use Juradmin with the password you entered.'
+echo 'Open https://juras.consulting/login and use Juradmin with the password you entered.'

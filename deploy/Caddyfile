@@ -1,4 +1,4 @@
-jura.consulting {
+juras.consulting {
     encode zstd gzip
     request_body {
         max_size 34MB
@@ -13,6 +13,6 @@ jura.consulting {
         header_up X-Forwarded-Proto {scheme}
     }
 }
-www.jura.consulting {
-    redir https://jura.consulting{uri} permanent
+www.juras.consulting {
+    redir https://juras.consulting{uri} permanent
 }
